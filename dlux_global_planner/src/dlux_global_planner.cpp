@@ -52,6 +52,9 @@ DluxGlobalPlanner::DluxGlobalPlanner() :
 void DluxGlobalPlanner::initialize(const ros::NodeHandle& parent, const std::string& name,
                                    TFListenerPtr tf, nav_core2::Costmap::Ptr costmap)
 {
+
+  ROS_INFO("DluxGlobalPlanner: Name is %s, namespace: %s", name.c_str(), parent.getNamespace().c_str());
+
   ros::NodeHandle planner_nh(parent, name);
   costmap_ = costmap;
   potential_grid_.setInfo(costmap_->getInfo());
@@ -80,6 +83,9 @@ void DluxGlobalPlanner::initialize(const ros::NodeHandle& parent, const std::str
     potential_pub_.init(planner_nh, "potential_grid", "potential");
 
   planner_nh.param("print_statistics", print_statistics_, false);
+
+  ROS_INFO_STREAM("DluxGlobalPlanner: path_caching " << path_caching_);
+  ROS_INFO_STREAM("DluxGlobalPlanner: improvement_threshold " << improvement_threshold_);
 }
 
 bool DluxGlobalPlanner::isPlanValid(const nav_2d_msgs::Path2D& path) const

@@ -45,6 +45,10 @@ void CostInterpreter::initialize(ros::NodeHandle& nh, nav_core2::Costmap::Ptr co
   costmap_ = costmap;
   int neutral_cost;
   nh.param("neutral_cost", neutral_cost, 50);
+
+  ROS_INFO("CostInterpreter: namespace: %s", nh.getNamespace().c_str());
+  ROS_INFO_STREAM("CostInterpreter: neutral_cost " << neutral_cost);
+
   if (neutral_cost < 0 || neutral_cost > std::numeric_limits<unsigned char>::max())
   {
     throw std::invalid_argument("neutral_cost (" + std::to_string(neutral_cost) + ") must be a valid unsigned char!");
