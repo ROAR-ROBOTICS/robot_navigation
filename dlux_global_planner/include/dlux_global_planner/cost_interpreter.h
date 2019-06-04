@@ -44,6 +44,8 @@ namespace dlux_global_planner
 enum struct UnknownInterpretation { LETHAL, EXPENSIVE, FREE };
 const unsigned char LETHAL_COST = nav_core2::Costmap::INSCRIBED_INFLATED_OBSTACLE;
 const float LETHAL_COST_F = static_cast<float>(LETHAL_COST);
+const unsigned char OBSTACLE_COST = nav_core2::Costmap::LETHAL_OBSTACLE;
+const float OBSTACLE_COST_F = static_cast<float>(OBSTACLE_COST);
 
 /**
  * There is a fundamental tradeoff in planning between the length of the path and the costs contained in the costmap.
@@ -84,6 +86,11 @@ public:
   inline bool isLethal(const float cost) const
   {
     return cost >= LETHAL_COST_F;
+  }
+
+  inline bool isObstacle(const float cost) const
+  {
+    return cost >= OBSTACLE_COST_F;
   }
 
   typedef std::shared_ptr<CostInterpreter> Ptr;

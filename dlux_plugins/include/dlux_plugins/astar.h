@@ -102,6 +102,9 @@ protected:
   bool manhattan_heuristic_;
   bool use_kernel_;
   double minimum_requeue_change_;
+  bool allow_lethal_;
+  bool allow_obstacle_;
+  float lethal_cost_scale_;
 };
 }  // namespace dlux_plugins
 

@@ -39,6 +39,7 @@
 #include <nav_2d_utils/path_ops.h>
 #include <pluginlib/class_list_macros.h>
 #include <string>
+#include <chrono>
 
 namespace dlux_global_planner
 {
@@ -118,25 +119,36 @@ nav_2d_msgs::Path2D DluxGlobalPlanner::makePlan(const nav_2d_msgs::Pose2DStamped
 
   // Check Start / Goal Quality
   unsigned int x, y;
+  // Check start is inside the map
   if (!worldToGridBounded(info, local_start.x, local_start.y, x, y))
   {
     cached_path_cost_ = -1.0;
     throw nav_core2::StartBoundsException(start);
   }
+  // Check start is not occupied
   if (costmap(x, y) >= costmap.INSCRIBED_INFLATED_OBSTACLE)
   {
-    cached_path_cost_ = -1.0;
-    throw nav_core2::OccupiedStartException(start);
+    std::string message = "makePlan Warning: The start pose (" + std::to_string(start.pose.x) + ", " +
+                    std::to_string(start.pose.y) + ", " + std::to_string(start.pose.theta) + " : " + start.header.frame_id + ")" + " is occupied";
+    ROS_WARN_NAMED("GlobalPlannerAdapter",message.c_str());
+    // cached_path_cost_ = -1.0;
+    // throw nav_core2::OccupiedStartException(start);
   }
+  // Check goal is inside the map
   if (!worldToGridBounded(info, local_goal.x, local_goal.y, x, y))
   {
     cached_path_cost_ = -1.0;
     throw nav_core2::GoalBoundsException(goal);
   }
+  // Check goal is not occupied
   if (costmap(x, y) >= costmap.INSCRIBED_INFLATED_OBSTACLE)
   {
-    cached_path_cost_ = -1.0;
-    throw nav_core2::OccupiedGoalException(goal);
+    std::string message = "makePlan Warning: The goal pose (" + std::to_string(goal.pose.x) + ", " +
+                    std::to_string(goal.pose.y) + ", " + std::to_string(goal.pose.theta) + " : " + goal.header.frame_id + ")" + " is occupied";
+    ROS_WARN_NAMED("GlobalPlannerAdapter",message.c_str());
+    // ROS_WARN(message.c_str());
+    // cached_path_cost_ = -1.0;
+    // throw nav_core2::OccupiedGoalException(goal);
   }
 
   bool cached_plan_available = false;
@@ -150,15 +162,21 @@ nav_2d_msgs::Path2D DluxGlobalPlanner::makePlan(const nav_2d_msgs::Pose2DStamped
   }
 
   // Commence path planning.
+  auto t_start = std::chrono::steady_clock::now();
   unsigned int n_updated = calculator_->updatePotentials(potential_grid_, local_start, local_goal);
+  auto t_update = std::chrono::steady_clock::now();
   potential_pub_.publish();
   double path_cost = 0.0;  // right now we don't do anything with the cost
+  auto t_start2 = std::chrono::steady_clock::now();
   nav_2d_msgs::Path2D path = traceback_->getPath(potential_grid_, start.pose, goal.pose, path_cost);
+  auto t_traceback = std::chrono::steady_clock::now();
   if (print_statistics_)
   {
     ROS_INFO_NAMED("DluxGlobalPlanner",
-                   "Got plan! Cost: %.2f, %d updated potentials, path of length %.2f with %zu poses.",
-                   path_cost, n_updated, nav_2d_utils::getPlanLength(path), path.poses.size());
+                   "Got plan! Cost: %.2f, %d updated potentials, path of length %.2f with %zu poses, update time: %li [ms], traceback time: %li [ms]",
+                   path_cost, n_updated, nav_2d_utils::getPlanLength(path), path.poses.size(),
+                   std::chrono::duration_cast<std::chrono::milliseconds>(t_update - t_start).count(),
+                   std::chrono::duration_cast<std::chrono::milliseconds>(t_traceback - t_start2).count());
   }
 
   // If there is a cached path available and the new path cost has not sufficiently improved

@@ -50,6 +50,16 @@ void AStar::initialize(ros::NodeHandle& private_nh, nav_core2::Costmap::Ptr cost
   private_nh.param("manhattan_heuristic", manhattan_heuristic_, false);
   private_nh.param("use_kernel", use_kernel_, true);
   private_nh.param("minimum_requeue_change", minimum_requeue_change_, 1.0);
+
+  private_nh.param("allow_lethal", allow_lethal_, false);
+  private_nh.param("allow_obstacle", allow_obstacle_, false);
+  if (allow_lethal_ || allow_obstacle_)
+    private_nh.param("lethal_cost_scale", lethal_cost_scale_, 1.0f);
+
+  ROS_INFO("AStar: namespace: %s", private_nh.getNamespace().c_str());
+  ROS_DEBUG_STREAM("AStar: allow_lethal " << allow_lethal_);
+  ROS_DEBUG_STREAM("AStar: allow_obstacle " << allow_obstacle_);
+  ROS_DEBUG_STREAM("AStar: lethal_cost_scale " << lethal_cost_scale_);
 }
 
 unsigned int AStar::updatePotentials(dlux_global_planner::PotentialGrid& potential_grid,
@@ -83,6 +93,7 @@ unsigned int AStar::updatePotentials(dlux_global_planner::PotentialGrid& potenti
     c++;
 
     nav_grid::Index i = top.i;
+    // stop if reached the start node
     if (i == start_i) return c;
 
     double prev_potential = potential_grid(i);
@@ -97,6 +108,7 @@ unsigned int AStar::updatePotentials(dlux_global_planner::PotentialGrid& potenti
         add(potential_grid, prev_potential, nav_grid::Index(i.x, i.y - 1), start_i);
   }
 
+  ROS_ERROR_NAMED("AStar", "updatePotentials Failed");
   throw nav_core2::NoGlobalPathException();
 }
 
@@ -104,13 +116,25 @@ void AStar::add(dlux_global_planner::PotentialGrid& potential_grid, double prev_
                 const nav_grid::Index& index, const nav_grid::Index& start_index)
 {
   float cost = cost_interpreter_->getCost(index.x, index.y);
-  if (cost_interpreter_->isLethal(cost))
+
+  // don't add lethal (obstacles + inflated) if not allowed
+  if (!allow_lethal_ && cost_interpreter_->isLethal(cost))
     return;
+
+  // don't add obstacles if not allowed
+  if (!allow_obstacle_ && cost_interpreter_->isObstacle(cost))
+    return;
+
+  // increase cost of lethal cells so the planner will not plan through them unless no choice
+  if (cost_interpreter_->isLethal(cost))
+  {
+    cost *= lethal_cost_scale_;
+  }
 
   float new_potential;
   if (use_kernel_)
   {
-    new_potential = dlux_global_planner::calculateKernel(potential_grid, cost, index.x, index.y);
+    new_potential = dlux_global_planner::calculateKernel(potential_grid, cost, index.x, index.y); // note: calculateKernel converts the cost into unsigned char, so it can't be higher than 255
   }
   else
   {

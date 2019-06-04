@@ -47,7 +47,6 @@ void CostInterpreter::initialize(ros::NodeHandle& nh, nav_core2::Costmap::Ptr co
   nh.param("neutral_cost", neutral_cost, 50);
 
   ROS_INFO("CostInterpreter: namespace: %s", nh.getNamespace().c_str());
-  ROS_INFO_STREAM("CostInterpreter: neutral_cost " << neutral_cost);
 
   if (neutral_cost < 0 || neutral_cost > std::numeric_limits<unsigned char>::max())
   {
@@ -118,6 +117,10 @@ void CostInterpreter::setConfiguration(const unsigned char neutral_cost, const f
     {
       float c = i * scale + neutral_cost_;
       cached_costs_[i] = std::min(c, LETHAL_COST_F - 1.0f);
+    }
+    else if (i == OBSTACLE_COST)
+    {
+      cached_costs_[i] = OBSTACLE_COST_F;
     }
     else
     {
