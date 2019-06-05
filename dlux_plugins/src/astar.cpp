@@ -51,8 +51,15 @@ void AStar::initialize(ros::NodeHandle& private_nh, nav_core2::Costmap::Ptr cost
   private_nh.param("use_kernel", use_kernel_, true);
   private_nh.param("minimum_requeue_change", minimum_requeue_change_, 1.0);
 
+  // Warning: Setting allow_lethal or allow_obstacle to true allows planner to plan even though the start/goal ore inside obstacles or the path is blocked.
+  // However, the path is not guaranteed to be feasible anymore!
+  // Warning: If allow_lethal or allow_obstacle and GradientPath is used, must set grid_step_neah_high to true
+
+  // Whether to allow including lethal cells (obstacles and inscribed) in the path. default: false. Doesn't increase computation.
   private_nh.param("allow_lethal", allow_lethal_, false);
+  // Whether to allow including obstacles in the path. False if allow_lethal is false. default: false.
   private_nh.param("allow_obstacle", allow_obstacle_, false);
+  // factor to increase the cost of lethal cells so the planner will not plan through them unless it has no choice
   if (allow_lethal_ || allow_obstacle_)
     private_nh.param("lethal_cost_scale", lethal_cost_scale_, 1.0f);
 

@@ -235,13 +235,27 @@ nav_2d_msgs::Path2D GradientPath::getPath(const dlux_global_planner::PotentialGr
 bool GradientPath::shouldGridStep(const dlux_global_planner::PotentialGrid& potential_grid,
                                   const nav_grid::Index& index)
 {
+  // check if near the edge of the map
   bool near_edge = index.x == 0 || index.x >= potential_grid.getWidth() - 1 ||
                    index.y == 0 || index.y >= potential_grid.getHeight() - 1;
   if (near_edge || !grid_step_near_high_)
     return near_edge;
 
+  // check for lethal at eight positions near cell (since the potential calculator may have expanded lethal as well, it is not enough to only check for HIGH_POTENTIAL)
+  bool near_lethal =
+      cost_interpreter_->isLethal(cost_interpreter_->getCost(index.x,     index.y    )) ||
+      cost_interpreter_->isLethal(cost_interpreter_->getCost(index.x + 1, index.y    )) ||
+      cost_interpreter_->isLethal(cost_interpreter_->getCost(index.x - 1, index.y    )) ||
+      cost_interpreter_->isLethal(cost_interpreter_->getCost(index.x,     index.y + 1)) ||
+      cost_interpreter_->isLethal(cost_interpreter_->getCost(index.x,     index.y - 1)) ||
+      cost_interpreter_->isLethal(cost_interpreter_->getCost(index.x + 1, index.y + 1)) ||
+      cost_interpreter_->isLethal(cost_interpreter_->getCost(index.x + 1, index.y - 1)) ||
+      cost_interpreter_->isLethal(cost_interpreter_->getCost(index.x - 1, index.y + 1)) ||
+      cost_interpreter_->isLethal(cost_interpreter_->getCost(index.x - 1, index.y - 1));
+
   // check for potentials at eight positions near cell
-  return potential_grid(index) >= HIGH_POTENTIAL ||
+  return near_lethal ||
+      potential_grid(index) >= HIGH_POTENTIAL ||
       potential_grid(index.x + 1, index.y)     >= HIGH_POTENTIAL ||
       potential_grid(index.x - 1, index.y)     >= HIGH_POTENTIAL ||
       potential_grid(index.x,     index.y + 1) >= HIGH_POTENTIAL ||
